@@ -14,7 +14,7 @@ server.on('connection', (ws) => {
                 currentQuestionIndex: 0,
                 timer: null,
                 timeLeft: 15,
-                answerCounts: [] // Ny array för att hålla svaren
+                answerCounts: [0, 0, 0, 0] // Ny array för att hålla svaren för varje fråga
             };
             sendLobbyUpdate(data.code);
         }
@@ -34,7 +34,7 @@ server.on('connection', (ws) => {
         if (data.type === 'start-game') {
             if (lobbies[data.code]) {
                 lobbies[data.code].questions = data.questions;
-                lobbies[data.code].answerCounts = Array(data.questions.length).fill([0, 0, 0, 0]); // Fyll arrayen för varje fråga
+                lobbies[data.code].answerCounts = [0, 0, 0, 0]; // Nollställ svarsräknaren för första frågan
                 sendGameStart(data.code);
                 startTimer(data.code);
             }
@@ -74,7 +74,7 @@ function handlePlayerAnswer(lobbyCode, username, selectedAnswer, timeLeft) {
     }
 
     // Öka räknaren för det valda svaret
-    lobbies[lobbyCode].answerCounts[currentQuestionIndex][selectedAnswer]++;
+    lobbies[lobbyCode].answerCounts[selectedAnswer]++;
 
     // Markera att spelaren har svarat
     player.answered = true;
@@ -106,7 +106,7 @@ function startTimer(lobbyCode) {
 function showCorrectAnswer(lobbyCode) {
     const currentQuestionIndex = lobbies[lobbyCode].currentQuestionIndex;
     const currentQuestion = lobbies[lobbyCode].questions[currentQuestionIndex];
-    const answerCounts = lobbies[lobbyCode].answerCounts[currentQuestionIndex]; // Hämtar answerCounts
+    const answerCounts = lobbies[lobbyCode].answerCounts; // Hämtar answerCounts för denna fråga
 
     lobbies[lobbyCode].sockets.forEach(socket => {
         socket.send(JSON.stringify({ 
@@ -139,6 +139,7 @@ function loadNextQuestion(lobbyCode) {
         endGame(lobbyCode);
     } else {
         lobbies[lobbyCode].players.forEach(player => player.answered = false);
+        lobbies[lobbyCode].answerCounts = [0, 0, 0, 0]; // Nollställ svarsräknaren för nästa fråga
         startTimer(lobbyCode);
         const currentQuestion = lobbies[lobbyCode].questions[lobbies[lobbyCode].currentQuestionIndex];
         lobbies[lobbyCode].sockets.forEach(socket => {
@@ -152,6 +153,7 @@ function endGame(lobbyCode) {
         socket.send(JSON.stringify({ type: 'game-over' }));
     });
 }
+
 
 
 
