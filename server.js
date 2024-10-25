@@ -13,7 +13,8 @@ server.on('connection', (ws) => {
                 questions: [],
                 currentQuestionIndex: 0,
                 timer: null,
-                timeLeft: 15
+                timeLeft: 15,
+                answerCounts: [] // Ny array för att hålla svaren
             };
             sendLobbyUpdate(data.code);
         }
@@ -33,6 +34,7 @@ server.on('connection', (ws) => {
         if (data.type === 'start-game') {
             if (lobbies[data.code]) {
                 lobbies[data.code].questions = data.questions;
+                lobbies[data.code].answerCounts = Array(data.questions.length).fill([0, 0, 0, 0]); // Fyll arrayen för varje fråga
                 sendGameStart(data.code);
                 startTimer(data.code);
             }
@@ -61,16 +63,18 @@ function sendGameStart(lobbyCode) {
 
 function handlePlayerAnswer(lobbyCode, username, selectedAnswer, timeLeft) {
     const player = lobbies[lobbyCode].players.find(p => p.username === username);
-    const currentQuestion = lobbies[lobbyCode].questions[lobbies[lobbyCode].currentQuestionIndex];
+    const currentQuestionIndex = lobbies[lobbyCode].currentQuestionIndex;
+    const currentQuestion = lobbies[lobbyCode].questions[currentQuestionIndex];
 
     if (selectedAnswer === currentQuestion.correct) {
-        // Poäng baserat på tid kvar om svaret är korrekt
         const points = timeLeft * 10;  // Du kan justera poängberäkningen om du vill
         player.score += points;
     } else {
-        // Inget poäng om svaret är fel
         player.score += 0;
     }
+
+    // Öka räknaren för det valda svaret
+    lobbies[lobbyCode].answerCounts[currentQuestionIndex][selectedAnswer]++;
 
     // Markera att spelaren har svarat
     player.answered = true;
@@ -88,7 +92,6 @@ function startTimer(lobbyCode) {
     lobbies[lobbyCode].timer = setInterval(() => {
         lobbies[lobbyCode].timeLeft--;
 
-        // Skicka uppdaterad tid till alla spelare
         lobbies[lobbyCode].sockets.forEach(socket => {
             socket.send(JSON.stringify({ type: 'timer-update', timeLeft: lobbies[lobbyCode].timeLeft }));
         });
@@ -101,9 +104,16 @@ function startTimer(lobbyCode) {
 }
 
 function showCorrectAnswer(lobbyCode) {
-    const currentQuestion = lobbies[lobbyCode].questions[lobbies[lobbyCode].currentQuestionIndex];
+    const currentQuestionIndex = lobbies[lobbyCode].currentQuestionIndex;
+    const currentQuestion = lobbies[lobbyCode].questions[currentQuestionIndex];
+    const answerCounts = lobbies[lobbyCode].answerCounts[currentQuestionIndex]; // Hämtar answerCounts
+
     lobbies[lobbyCode].sockets.forEach(socket => {
-        socket.send(JSON.stringify({ type: 'correct-answer', correct: currentQuestion.correct }));
+        socket.send(JSON.stringify({ 
+            type: 'correct-answer', 
+            correct: currentQuestion.correct, 
+            answerCounts: answerCounts // Skicka answerCounts till klienten
+        }));
     });
 
     setTimeout(() => {
@@ -142,6 +152,7 @@ function endGame(lobbyCode) {
         socket.send(JSON.stringify({ type: 'game-over' }));
     });
 }
+
 
 
 
