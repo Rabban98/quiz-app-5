@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const stripe = require("stripe")("sk_test_51QSN5iAOyBtcmLt74sT97JkDACqPhXkZWyfS7Fbp5mFpklpCdpwz7d3jdIpqS01o2C2YPnlixSlISyvh1xWjflKy00VDPEtVZk"); // Din Stripe hemliga nyckel
+const stripe = require("stripe")("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"); // Din Stripe hemliga nyckel
 
 const app = express();
 
